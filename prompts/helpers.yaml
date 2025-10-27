@@ -1,0 +1,28 @@
+# Helper templates for formatting
+
+gitlab_issue_template: |
+  GitLab Issue 참조:
+  - Issue #{issue_number}: {issue_title}
+  - Description: {issue_description}
+
+redmine_issue_template: |
+  {index}. Issue #{issue_id}: "{subject}"
+     - Tracker: {tracker}
+     - Status: {status}
+     - Assigned: {assigned_to}
+     - Progress: {done_ratio}%
+     - Description: {description}
+
+file_change_template: |
+  - {file_path} (+{additions}, -{deletions})
+
+diff_summary_template: |
+  총 {total_files}개 파일 변경
+  추가: {total_additions}줄
+  삭제: {total_deletions}줄
+
+no_gitlab_issue: |
+  GitLab Issue: 없음
+
+no_redmine_issues: |
+  현재 진행중인 issue가 없습니다.

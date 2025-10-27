@@ -1,0 +1,40 @@
+template: |
+  === GitLab Commit 정보 ===
+  Repository: {repository}
+  Branch: {branch}
+  Author: {author}
+  Commit Hash: {commit_hash}
+  Commit Message:
+  {commit_message}
+
+  Changed Files ({files_count}개):
+  {changed_files}
+
+  Diff Summary:
+  {diff_summary}
+
+  {gitlab_issue_info}
+
+  === 진행중인 Redmine Issues ===
+  {redmine_issues}
+
+  === 분석 요청 ===
+  위 commit 정보를 분석하여:
+  1. 기존 진행중인 Redmine issue 중 관련된 것이 있는지 판단
+  2. 관련 issue가 있으면 업데이트, 없으면 새로 생성
+  3. 적절한 tracker, priority, done_ratio 결정
+  4. 간결하고 명확한 subject와 상세한 description 작성
+
+  반드시 JSON 형식으로 응답하세요.
+
+variables:
+  - repository
+  - branch
+  - author
+  - commit_hash
+  - commit_message
+  - files_count
+  - changed_files
+  - diff_summary
+  - gitlab_issue_info
+  - redmine_issues
