@@ -199,11 +199,11 @@ class CommitAnalyzer:
                 return result
 
             note = (
-                f"[GitLab Auto-Sync]\n"
-                f"Commit: {commit_sha[:8]}\n"
-                f"Author: {author}\n"
-                f"Message: {commit_message}\n\n"
-                f"Changed {diff_data['summary']['total_files']} files "
+                f"h4. GitLab Sync\n\n"
+                f"* Commit: @{commit_sha[:8]}@\n"
+                f"* Author: _{author}_\n"
+                f"* Message: {commit_message}\n"
+                f"* Changed: *{diff_data['summary']['total_files']}* files "
                 f"(+{diff_data['summary']['total_additions']}, "
                 f"-{diff_data['summary']['total_deletions']})"
             )
@@ -247,12 +247,12 @@ class CommitAnalyzer:
                 'subject': analysis['subject'],
                 'description': (
                     f"{analysis['description']}\n\n"
-                    f"---\n"
-                    f"[GitLab Auto-Created]\n"
-                    f"Commit: {commit_sha[:8]}\n"
-                    f"Author: {author}\n"
-                    f"Analysis confidence: {analysis.get('confidence', 'N/A')}%\n"
-                    f"Reasoning: {analysis.get('reasoning', 'N/A')}"
+                    f"---\n\n"
+                    f"h4. GitLab Sync Info\n\n"
+                    f"* Commit: @{commit_sha[:8]}@\n"
+                    f"* Author: _{author}_\n"
+                    f"* Confidence: *{analysis.get('confidence', 'N/A')}%*\n\n"
+                    f"_Reasoning: {analysis.get('reasoning', 'N/A')}_"
                 ),
                 'tracker_id': analysis['tracker_id'],
                 'priority_id': analysis['priority_id'],
@@ -289,13 +289,12 @@ class CommitAnalyzer:
 
         try:
             note = (
-                f"[GitLab Auto-Update]\n"
-                f"Commit: {commit_sha[:8]}\n"
-                f"Author: {author}\n"
-                f"Message: {commit_message}\n\n"
-                f"LLM Analysis:\n"
-                f"- Confidence: {analysis.get('confidence', 'N/A')}%\n"
-                f"- Reasoning: {analysis.get('reasoning', 'N/A')}"
+                f"h4. GitLab Update\n\n"
+                f"* Commit: @{commit_sha[:8]}@\n"
+                f"* Author: _{author}_\n"
+                f"* Message: {commit_message}\n"
+                f"* Confidence: *{analysis.get('confidence', 'N/A')}%*\n\n"
+                f"_Reasoning: {analysis.get('reasoning', 'N/A')}_"
             )
 
             update_data = {
