@@ -83,18 +83,18 @@ class CommitAnalysisChain:
 
         if diff_type == 'full':
             diff_summary = (
-                f"전체 변경사항 ({diff_data['summary']['total_lines']}줄)\n"
-                f"{format_file_changes(diff_data['diffs'])}"
+                f"전체 변경사항 ({diff_data['summary']['total_lines']}줄)\n\n"
+                f"{format_file_changes(diff_data['diffs'], include_diff=True)}"
             )
         elif diff_type == 'summary':
             diff_summary = (
-                f"변경 요약 ({diff_data['summary']['total_lines']}줄)\n"
-                f"{format_file_changes(diff_data['diffs'])}"
+                f"변경 요약 ({diff_data['summary']['total_lines']}줄)\n\n"
+                f"{format_file_changes(diff_data['diffs'], include_diff=True)}"
             )
         else:  # high_level
             diff_summary = (
                 f"대규모 변경 ({diff_data['summary']['total_lines']}줄)\n"
-                f"상위 변경 파일:\n{format_file_changes(diff_data['diffs'])}"
+                f"상위 변경 파일:\n{format_file_changes(diff_data['diffs'], include_diff=False)}"
             )
 
         prompt = template.format(

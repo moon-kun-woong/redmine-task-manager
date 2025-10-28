@@ -115,13 +115,23 @@ def log_sync_event(event_data: Dict[str, Any]):
         }, ensure_ascii=False) + '\n')
 
 
-def format_file_changes(diffs: list) -> str:
+def format_file_changes(diffs: list, include_diff: bool = False) -> str:
+    
     lines = []
     for diff in diffs:
         additions = diff.get('additions', 0)
         deletions = diff.get('deletions', 0)
         path = diff.get('path', diff.get('new_path', 'unknown'))
-        lines.append(f"- {path} (+{additions}, -{deletions})")
+
+        line = f"- {path} (+{additions}, -{deletions})"
+
+        if include_diff:
+            diff_content = diff.get('diff') or diff.get('diff_preview')
+            if diff_content:
+                indented_diff = '\n  '.join(diff_content.split('\n'))
+                line += f"\n  ```diff\n  {indented_diff}\n  ```"
+
+        lines.append(line)
 
     return '\n'.join(lines)
 

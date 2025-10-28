@@ -57,6 +57,29 @@ class GitLabClient:
             logger.error(f"Failed to get MR {mr_iid}: {e}")
             return None
 
+    def _truncate_diff(self, diff_content: str, max_lines: int = 20) -> str:
+
+        if not diff_content:
+            return ""
+
+        lines = diff_content.split('\n')
+
+        if len(lines) <= max_lines:
+            return diff_content
+
+        important_lines = []
+        for line in lines:
+            if line.startswith('@@') or line.startswith('+') or line.startswith('-'):
+                important_lines.append(line)
+                if len(important_lines) >= max_lines:
+                    break
+
+        result = '\n'.join(important_lines)
+        if len(lines) > len(important_lines):
+            result += f"\n... ({len(lines) - len(important_lines)} more lines)"
+
+        return result
+
     def filter_and_summarize_diff(self, diffs: List[Dict]) -> Dict[str, Any]:
 
         filtered_diffs = [
@@ -81,7 +104,15 @@ class GitLabClient:
         if total_lines < settings.MAX_DIFF_LINES:
             return {
                 'type': 'full',
-                'diffs': filtered_diffs,
+                'diffs': [
+                    {
+                        'path': diff.get('new_path', diff.get('old_path')),
+                        'additions': diff.get('additions', 0),
+                        'deletions': diff.get('deletions', 0),
+                        'diff': diff.get('diff', ''),  # Include actual diff content
+                    }
+                    for diff in filtered_diffs
+                ],
                 'summary': summary
             }
         elif total_lines < settings.MAX_SUMMARY_LINES:
@@ -92,6 +123,7 @@ class GitLabClient:
                         'path': diff.get('new_path', diff.get('old_path')),
                         'additions': diff.get('additions', 0),
                         'deletions': diff.get('deletions', 0),
+                        'diff_preview': self._truncate_diff(diff.get('diff', ''), max_lines=20),
                     }
                     for diff in filtered_diffs
                 ],

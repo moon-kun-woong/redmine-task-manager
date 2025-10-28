@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     MAX_DIFF_LINES: int = 500  # Full diff까지 허용하는 최대 라인 수
     MAX_SUMMARY_LINES: int = 2000  # Summary로 처리하는 최대 라인 수
 
+    # LLM optimization
+    MAX_ISSUES_FOR_LLM: int = 15  # LLM에게 전달할 최대 issue 개수
+
     # Redmine status IDs (일반적인 값, 실제 환경에 맞게 조정 필요)
     REDMINE_STATUS_IN_PROGRESS: int = 2  # 진행중
     REDMINE_STATUS_RESOLVED: int = 3  # 해결

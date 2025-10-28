@@ -5,6 +5,8 @@ from app.gitlab_client import GitLabClient
 from app.redmine_client import RedmineClient
 from app.utils import parse_issue_id_from_message, log_sync_event, is_commit_already_processed
 from chains.simple_chain import CommitAnalysisChain
+from app.config import settings
+
 
 logger = logging.getLogger(__name__)
 
@@ -136,9 +138,11 @@ class CommitAnalyzer:
             return result
 
         # 오픈되어있는 이슈를 가져옴 (new, in_progress)
+        # LLM 부하 감소를 위해 개수 제한
         open_issues = self.redmine.get_issues(
             project_id=redmine_project['id'],
-            status_id='open'
+            status_id='open',
+            limit=settings.MAX_ISSUES_FOR_LLM
         )
 
         if open_issues is None:
