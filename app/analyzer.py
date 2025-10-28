@@ -3,7 +3,7 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 from app.gitlab_client import GitLabClient
 from app.redmine_client import RedmineClient
-from app.utils import parse_issue_id_from_message, log_sync_event
+from app.utils import parse_issue_id_from_message, log_sync_event, is_commit_already_processed
 from chains.simple_chain import CommitAnalysisChain
 
 logger = logging.getLogger(__name__)
@@ -97,6 +97,12 @@ class CommitAnalyzer:
             result['reason'] = 'Commit type should be skipped'
             return result
 
+        if is_commit_already_processed(commit_sha):
+            logger.info(f"Commit {commit_sha[:8]} already processed, skipping")
+            result['status'] = 'skipped'
+            result['reason'] = 'Commit already processed'
+            return result
+
         commit_detail = self.gitlab.get_commit(project_id, commit_sha)
         if not commit_detail:
             result['status'] = 'failed'
@@ -129,12 +135,13 @@ class CommitAnalyzer:
             result['error'] = f'Redmine project not found: {project_name}'
             return result
 
-        in_progress_issues = self.redmine.get_issues(
+        # 오픈되어있는 이슈를 가져옴 (new, in_progress)
+        open_issues = self.redmine.get_issues(
             project_id=redmine_project['id'],
-            status_id='in_progress'
+            status_id='open'
         )
 
-        if in_progress_issues is None:
+        if open_issues is None:
             result['status'] = 'failed'
             result['error'] = 'Failed to fetch Redmine issues'
             return result
@@ -156,7 +163,7 @@ class CommitAnalyzer:
         logger.info("Calling LLM for analysis...")
         analysis_result = self.chain.analyze(
             commit_data,
-            in_progress_issues,
+            open_issues,
             gitlab_issue
         )
 

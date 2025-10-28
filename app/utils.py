@@ -128,7 +128,7 @@ def format_file_changes(diffs: list) -> str:
 
 def format_redmine_issues(issues: list) -> str:
     if not issues:
-        return "현재 진행중인 issue가 없습니다."
+        return "현재 Open 상태인 issue가 없습니다."
 
     lines = []
     for idx, issue in enumerate(issues, 1):
@@ -147,3 +147,46 @@ def format_redmine_issues(issues: list) -> str:
         )
 
     return '\n\n'.join(lines)
+
+
+def is_commit_already_processed(commit_sha: str) -> bool:
+    """
+    Check if commit has already been processed by searching sync logs
+
+    Args:
+        commit_sha: Full or short commit SHA
+
+    Returns:
+        True if already processed
+    """
+    import glob
+    from pathlib import Path
+
+    log_files = glob.glob(str(LOGS_DIR / "sync-*.log"))
+
+    for log_file in log_files:
+        try:
+            with open(log_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+                if commit_sha in content or commit_sha[:8] in content:
+                    return True
+        except Exception as e:
+            logger.warning(f"Error reading log file {log_file}: {e}")
+            continue
+
+    return False
+
+
+def mark_commit_as_processed(commit_sha: str):
+    """
+    Mark commit as processed in a separate tracking file
+
+    This is a lightweight alternative to checking full sync logs
+    """
+    tracking_file = LOGS_DIR / "processed_commits.log"
+
+    try:
+        with open(tracking_file, 'a', encoding='utf-8') as f:
+            f.write(f"{datetime.now().isoformat()}|{commit_sha}\n")
+    except Exception as e:
+        logger.error(f"Failed to mark commit as processed: {e}")

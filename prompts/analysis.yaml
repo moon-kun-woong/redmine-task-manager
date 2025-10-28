@@ -15,12 +15,12 @@ template: |
 
   {gitlab_issue_info}
 
-  === 진행중인 Redmine Issues ===
+  === Open 상태 Redmine Issues ===
   {redmine_issues}
 
   === 분석 요청 ===
   위 commit 정보를 분석하여:
-  1. 기존 진행중인 Redmine issue 중 관련된 것이 있는지 판단
+  1. 기존 Open 상태(신규/진행중) Redmine issue 중 관련된 것이 있는지 판단
   2. 관련 issue가 있으면 업데이트, 없으면 새로 생성
   3. 적절한 tracker, priority, done_ratio 결정
   4. 간결하고 명확한 subject와 상세한 description 작성

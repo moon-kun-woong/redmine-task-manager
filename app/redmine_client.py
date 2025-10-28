@@ -59,6 +59,8 @@ class RedmineClient:
 
             if status_id == 'in_progress':
                 params['status_id'] = settings.REDMINE_STATUS_IN_PROGRESS
+            elif status_id == 'open':
+                params['status_id'] = 'open'
             elif status_id:
                 params['status_id'] = status_id
 
