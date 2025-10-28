@@ -3,7 +3,12 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 from app.gitlab_client import GitLabClient
 from app.redmine_client import RedmineClient
-from app.utils import parse_issue_id_from_message, log_sync_event, is_commit_already_processed
+from app.utils import (
+    parse_issue_id_from_message,
+    log_sync_event,
+    is_commit_already_processed,
+    mark_commit_as_processed
+)
 from chains.simple_chain import CommitAnalysisChain
 from app.config import settings
 
@@ -177,20 +182,25 @@ class CommitAnalyzer:
             return result
 
         if analysis_result['action'] == 'create':
-            return self._create_issue(
+            result = self._create_issue(
                 redmine_project['id'],
                 analysis_result,
                 commit_sha,
                 author_name
             )
         else:
-            return self._update_issue(
+            result = self._update_issue(
                 analysis_result['redmine_issue_id'],
                 analysis_result,
                 commit_sha,
                 commit_message,
                 author_name
             )
+
+        if result.get('status') == 'success':
+            mark_commit_as_processed(commit_sha)
+
+        return result
 
     def _update_explicit_issue(
         self,
@@ -232,6 +242,7 @@ class CommitAnalyzer:
                 result['status'] = 'success'
                 result['updated_issue'] = updated
                 logger.info(f"Successfully updated Redmine issue #{issue_id}")
+                mark_commit_as_processed(commit_sha)
             else:
                 result['status'] = 'failed'
                 result['error'] = 'Failed to update issue'

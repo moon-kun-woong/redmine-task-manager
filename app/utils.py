@@ -160,17 +160,20 @@ def format_redmine_issues(issues: list) -> str:
 
 
 def is_commit_already_processed(commit_sha: str) -> bool:
-    """
-    Check if commit has already been processed by searching sync logs
-
-    Args:
-        commit_sha: Full or short commit SHA
-
-    Returns:
-        True if already processed
-    """
     import glob
     from pathlib import Path
+
+    tracking_file = LOGS_DIR / "processed_commits.log"
+
+    if tracking_file.exists():
+        try:
+            with open(tracking_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+                if commit_sha in content or commit_sha[:8] in content:
+                    logger.debug(f"Commit {commit_sha[:8]} found in tracking file")
+                    return True
+        except Exception as e:
+            logger.warning(f"Error reading tracking file: {e}")
 
     log_files = glob.glob(str(LOGS_DIR / "sync-*.log"))
 
@@ -179,6 +182,8 @@ def is_commit_already_processed(commit_sha: str) -> bool:
             with open(log_file, 'r', encoding='utf-8') as f:
                 content = f.read()
                 if commit_sha in content or commit_sha[:8] in content:
+                    logger.info(f"Migrating commit {commit_sha[:8]} to tracking file")
+                    mark_commit_as_processed(commit_sha)
                     return True
         except Exception as e:
             logger.warning(f"Error reading log file {log_file}: {e}")
@@ -188,11 +193,6 @@ def is_commit_already_processed(commit_sha: str) -> bool:
 
 
 def mark_commit_as_processed(commit_sha: str):
-    """
-    Mark commit as processed in a separate tracking file
-
-    This is a lightweight alternative to checking full sync logs
-    """
     tracking_file = LOGS_DIR / "processed_commits.log"
 
     try:
