@@ -82,7 +82,7 @@ def test_openai():
 
     try:
         from langchain_openai import ChatOpenAI
-        from langchain.schema import HumanMessage
+        from langchain_core.messages import HumanMessage
 
         llm = ChatOpenAI(
             model="gpt-4o",

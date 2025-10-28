@@ -52,3 +52,5 @@ htmlcov/
 .ipynb_checkpoints
 
 
+# map
+sequence.md

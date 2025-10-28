@@ -2,8 +2,7 @@ import json
 import logging
 from typing import Dict, Any, Optional
 from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
-from langchain.schema import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 from app.config import settings
 from app.utils import load_yaml_prompt, extract_json_from_text
 
