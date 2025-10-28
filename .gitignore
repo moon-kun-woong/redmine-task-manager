@@ -47,6 +47,7 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+test_webhook.json
 
 # Jupyter
 .ipynb_checkpoints

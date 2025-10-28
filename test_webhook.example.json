@@ -1,0 +1,39 @@
+{
+  "object_kind": "push",
+  "event_name": "push",
+  "before": "0000000000000000000000000000000000000000",
+  "after": "abc123def456abc123def456abc123def456abc1",
+  "ref": "refs/heads/main",
+  "project_id": 9,
+  "project": {
+    "id": 9,
+    "name": "redmine-task-manager",
+    "path": "redmine-task-manager",
+    "path_with_namespace": "example-user/redmine-task-manager",
+    "namespace": "example-user",
+    "description": "Redmine Task Manager",
+    "web_url": "http://gitlab.example.com/example-user/redmine-task-manager"
+  },
+  "commits": [
+    {
+      "id": "abc123def456abc123def456abc123def456abc1",
+      "message": "docs: remove default GitLab README template",
+      "timestamp": "2025-10-28T14:20:19+09:00",
+      "url": "http://gitlab.example.com/example-user/redmine-task-manager/commit/abc123def456abc123def456abc123def456abc1",
+      "author": {
+        "name": "john-doe",
+        "email": "user@example.com"
+      },
+      "added": [],
+      "modified": ["requirements.txt", "chains/simple_chain.py"],
+      "removed": []
+    }
+  ],
+  "total_commits_count": 1,
+  "repository": {
+    "name": "redmine-task-manager",
+    "url": "git@gitlab.example.com:example-user/redmine-task-manager.git",
+    "description": "Redmine Task Manager",
+    "homepage": "http://gitlab.example.com/example-user/redmine-task-manager"
+  }
+}
