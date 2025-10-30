@@ -219,29 +219,63 @@ class CommitAnalyzer:
                 result['error'] = f'Issue #{issue_id} not found'
                 return result
 
-            note = (
-                f"h4. GitLab Sync\n\n"
-                f"* Commit: @{commit_sha[:8]}@\n"
-                f"* Author: _{author}_\n"
-                f"* Message: {commit_message}\n"
-                f"* Changed: *{diff_data['summary']['total_files']}* files "
-                f"(+{diff_data['summary']['total_additions']}, "
-                f"-{diff_data['summary']['total_deletions']})"
+            logger.info(f"Generating documentation for explicit issue #{issue_id}")
+            doc_result = self.chain.document_commit(
+                commit_message,
+                diff_data,
+                author
             )
 
-            message_lower = commit_message.lower()
-            update_data = {}
+            if not doc_result:
+                # LLM 실패 시 기본값
+                commit_documentation = f"* {commit_message}"
+                done_ratio = 50
+                status_id = 2
+                logger.warning("Failed to generate LLM documentation, using fallback values")
+            else:
+                commit_documentation = doc_result.get('documentation', f"* {commit_message}")
+                done_ratio = doc_result.get('done_ratio', 50)
+                status_id = doc_result.get('status_id', 2)
 
-            if any(keyword in message_lower for keyword in ['fix', 'resolve', 'close', '수정', '해결']):
-                update_data['done_ratio'] = 90
-                note += "\n\n[자동 판단: 문제 해결로 진행도 90%로 업데이트]"
+            push_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-            updated = self.redmine.update_issue(issue_id, update_data, notes=note)
+            existing_description = existing_issue.get('description', '')
+            if not existing_description:
+                existing_description = ''
+
+            update_history_marker = "\n\n----\n\nh3. 업데이트 이력\n\n"
+
+            new_update_entry = (
+                f"h4. {push_timestamp}\n\n"
+                f"*Commit*: @{commit_sha[:8]}@\n"
+                f"*Message*: {commit_message}\n\n"
+                f"{commit_documentation}\n\n"
+                f"_{diff_data['summary']['total_files']} files changed: "
+                f"+{diff_data['summary']['total_additions']}, "
+                f"-{diff_data['summary']['total_deletions']}_\n"
+            )
+
+            if "h3. 업데이트 이력" in existing_description:
+                updated_description = existing_description + "\n----\n\n" + new_update_entry
+            else:
+                updated_description = existing_description + update_history_marker + new_update_entry
+
+            update_data = {
+                'description': updated_description,
+                'done_ratio': done_ratio,
+                'status_id': status_id
+            }
+
+            logger.info(
+                f"Updating issue #{issue_id}: done_ratio={done_ratio}%, status_id={status_id}"
+            )
+
+            updated = self.redmine.update_issue(issue_id, update_data, notes=None)
 
             if updated:
                 result['status'] = 'success'
                 result['updated_issue'] = updated
-                logger.info(f"Successfully updated Redmine issue #{issue_id}")
+                logger.info(f"Successfully updated Redmine issue #{issue_id} with update history")
                 mark_commit_as_processed(commit_sha)
             else:
                 result['status'] = 'failed'
@@ -250,7 +284,7 @@ class CommitAnalyzer:
         except Exception as e:
             result['status'] = 'failed'
             result['error'] = str(e)
-            logger.error(f"Error updating explicit issue: {e}")
+            logger.error(f"Error updating explicit issue: {e}", exc_info=True)
 
         return result
 

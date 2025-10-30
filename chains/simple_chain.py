@@ -19,9 +19,10 @@ class CommitAnalysisChain:
             max_retries=3,
         )
 
-        # Load prompts from YAML
+        # prompts 폴더에서 YAML load
         self.system_prompt = load_yaml_prompt("system.yaml")
         self.analysis_template = load_yaml_prompt("analysis.yaml")
+        self.documentation_prompt = load_yaml_prompt("documentation.yaml")
 
     def analyze(
         self,
@@ -141,6 +142,88 @@ class CommitAnalysisChain:
             return None
 
         return result
+
+    def document_commit(
+        self,
+        commit_message: str,
+        diff_data: Dict[str, Any],
+        author: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Commit을 분석하여 문서화하고 진척도/상태를 제안합니다.
+
+        Returns:
+            {
+                'documentation': str,  # Textile 형식 문서
+                'done_ratio': int,     # 0-100
+                'status_id': int       # Redmine status ID
+            }
+        """
+        try:
+            from app.utils import format_file_changes
+
+            system_msg = SystemMessage(content=self.documentation_prompt['content'])
+
+            diff_summary = diff_data.get('summary', {})
+            files_changed = format_file_changes(diff_data.get('diffs', []))
+
+            diff_detail = ""
+            diff_type = diff_data.get('type', 'unknown')
+            if diff_type == 'full':
+                diff_detail = format_file_changes(diff_data.get('diffs', []), include_diff=True)
+            else:
+                diff_detail = files_changed
+
+            user_msg = HumanMessage(
+                content=(
+                    f"다음 commit의 변경 내용을 분석하여 문서화하고 진척도/상태를 판단해주세요:\n\n"
+                    f"**Commit 메시지** (참고용): {commit_message}\n\n"
+                    f"**변경 통계**:\n"
+                    f"- 파일: {diff_summary.get('total_files', 0)}개\n"
+                    f"- 추가: +{diff_summary.get('total_additions', 0)}줄\n"
+                    f"- 삭제: -{diff_summary.get('total_deletions', 0)}줄\n\n"
+                    f"**변경 파일 상세**:\n{diff_detail}\n\n"
+                    f"위 내용을 분석하여 JSON 형식으로 응답해주세요."
+                )
+            )
+
+            logger.info("Generating commit documentation...")
+            response = self.llm.invoke([system_msg, user_msg])
+
+            result = self._parse_documentation_response(response.content)
+
+            if result:
+                logger.info(
+                    f"Documentation generated: done_ratio={result.get('done_ratio')}%, "
+                    f"status_id={result.get('status_id')}"
+                )
+                return result
+            else:
+                logger.error("Failed to parse documentation response")
+                return None
+
+        except Exception as e:
+            logger.error(f"Error generating commit documentation: {e}", exc_info=True)
+            return None
+
+    def _parse_documentation_response(self, response_text: str) -> Optional[Dict[str, Any]]:
+        """Documentation 응답 JSON 파싱"""
+        try:
+            result = json.loads(response_text)
+
+            if 'documentation' not in result or 'done_ratio' not in result or 'status_id' not in result:
+                logger.error("Missing required fields in documentation response")
+                return None
+
+            return result
+
+        except json.JSONDecodeError:
+            result = extract_json_from_text(response_text)
+            if result and 'documentation' in result:
+                return result
+
+            logger.error(f"Could not parse JSON from documentation response: {response_text[:200]}")
+            return None
 
     async def analyze_async(
         self,
