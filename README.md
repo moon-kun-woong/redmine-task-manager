@@ -299,7 +299,6 @@ Redmine에서 확인: Administration → Issue statuses
 - [ ] Agent 기반 분석 (자율적 정보 수집)
 - [ ] Vector DB 연동 (과거 issue 검색)
 - [ ] 웹 대시보드 (분석 결과 시각화)
-- [ ] 양방향 동기화 (Redmine → GitLab)
 - [ ] 다중 Redmine 프로젝트 지원 강화
 
 ## 라이선스
