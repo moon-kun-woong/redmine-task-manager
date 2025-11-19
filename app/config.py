@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     PROJECT_MAPPING: Dict[str, str] = Field(default_factory=dict)
+    REDMINE_PROJECT_SUFFIX: str = "::AI"
 
     # Ignored file patterns for diff filtering
     IGNORED_PATTERNS: List[str] = Field(default_factory=lambda: [

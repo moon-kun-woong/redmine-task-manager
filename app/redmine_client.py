@@ -26,7 +26,12 @@ class RedmineClient:
             return None
 
     def get_project_by_name(self, name: str) -> Optional[Dict]:
-        mapped_name = settings.PROJECT_MAPPING.get(name, name)
+        if name in settings.PROJECT_MAPPING:
+            mapped_name = settings.PROJECT_MAPPING[name]
+            logger.info(f"Using PROJECT_MAPPING: {name} -> {mapped_name}")
+        else:
+            mapped_name = f"{name}{settings.REDMINE_PROJECT_SUFFIX}"
+            logger.info(f"Using suffix mapping: {name} -> {mapped_name}")
 
         projects = self.get_projects()
         if not projects:
@@ -34,13 +39,16 @@ class RedmineClient:
 
         for project in projects:
             if project['name'] == mapped_name or project['identifier'] == mapped_name.lower():
+                logger.info(f"Found Redmine project: {project['name']} (id: {project['id']})")
                 return project
 
         for project in projects:
             if project['name'].lower() == mapped_name.lower():
+                logger.info(f"Found Redmine project (case-insensitive): {project['name']} (id: {project['id']})")
                 return project
 
-        logger.warning(f"Project not found: {name} (mapped to: {mapped_name})")
+        logger.warning(f"Redmine project not found for GitLab repo '{name}' (looking for: '{mapped_name}')")
+        logger.info(f"To fix: Create a Redmine project named '{mapped_name}' or add mapping in PROJECT_MAPPING")
         return None
 
     def get_issues(
