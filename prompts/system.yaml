@@ -48,8 +48,21 @@ content: |
   - 코드: @코드@
   - 구분선: ---
 
-  Description은 간결하고 정돈되게 작성하되, 필요한 정보만 포함하세요.
-  불필요하게 길게 쓰지 말고, 핵심만 명확하게 작성하세요.
+  **중요**: Description은 **작업 내용(Task)**을 중심으로 작성하세요:
+  - **"어떤 작업이 완료되었는지"**를 비즈니스/기능 관점에서 설명하세요
+  - 코드 레벨 설명(파일명, 함수명, 변수명)이 아닌 **사용자/개발팀이 이해할 수 있는 작업 내용**을 작성하세요
+  - Commit message와 diff를 종합적으로 분석하여 **무엇이 개선/추가/수정되었는지** 설명하세요
+  - 불릿 포인트로 작업 내용을 나열하세요 (3-5개)
+
+  **좋은 예시**:
+  * Redmine 이슈 업데이트 시 LLM 기반 자동 문서화 기능 추가
+  * 커밋 처리 중복 방지 로직 개선으로 안정성 향상
+  * IP 검색 성능 최적화 작업 완료
+
+  **나쁜 예시** (이렇게 작성하지 마세요):
+  * analyzer.py의 _update_explicit_issue 메서드 수정
+  * utils.py에 is_commit_already_processed 함수 추가
+  * GitLabClient 클래스에서 filter_diff 메서드 변경
 
   ## Response Format
   반드시 JSON 형식으로만 응답하세요:
@@ -59,8 +72,9 @@ content: |
     "tracker_id": number,
     "priority_id": number,
     "subject": "string (한글, 50자 이내, 간결하고 명확하게)",
-    "description": "string (한글, Textile 형식으로 간결하게)",
+    "description": "string (한글, Textile 형식으로 간결하게, 변경 내용 중심)",
     "done_ratio": number (0-100),
-    "confidence": number (0-100, 판단 확신도),
-    "reasoning": "string (판단 근거를 한글로 간결하게)"
+    "confidence": number (0-100, 판단 확신도)
   }
+
+  **주의**: "reasoning" 필드는 포함하지 마세요. Description에 변경 내용만 작성하세요.

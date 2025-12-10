@@ -39,12 +39,18 @@ def load_yaml_prompt(filename: str) -> Dict[str, Any]:
 
 def parse_issue_id_from_message(message: str) -> Optional[int]:
     patterns = [
-        r'#(\d+)',
-        r'refs\s+#(\d+)',
-        r'issue\s+#(\d+)',
-        r'fix\s+#(\d+)',
-        r'close\s+#(\d+)',
-        r'resolve\s+#(\d+)',
+        r'#(\d+)',                      # #123
+        r'refs\s+#(\d+)',               # refs #123
+        r'issue\s+#(\d+)',              # issue #123
+        r'fix\s+#(\d+)',                # fix #123
+        r'close\s+#(\d+)',              # close #123
+        r'resolve\s+#(\d+)',            # resolve #123
+        r'fix\s+(\d+)',                 # fix 123
+        r'close\s+(\d+)',               # close 123
+        r'resolve\s+(\d+)',             # resolve 123
+        r'refs\s+(\d+)',                # refs 123
+        r'issue\s+(\d+)',               # issue 123
+        r'^\s*(\d+)',                   # 123 (commit message 맨 앞)
     ]
 
     for pattern in patterns:

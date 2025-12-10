@@ -245,14 +245,15 @@ class CommitAnalyzer:
 
             update_history_marker = "\n\n----\n\nh3. 업데이트 이력\n\n"
 
+            total_files = diff_data['summary']['total_files']
+            total_additions = diff_data['summary']['total_additions']
+            total_deletions = diff_data['summary']['total_deletions']
+
             new_update_entry = (
                 f"h4. {push_timestamp}\n\n"
-                f"*Commit*: @{commit_sha[:8]}@\n"
-                f"*Message*: {commit_message}\n\n"
                 f"{commit_documentation}\n\n"
-                f"_{diff_data['summary']['total_files']} files changed: "
-                f"+{diff_data['summary']['total_additions']}, "
-                f"-{diff_data['summary']['total_deletions']}_\n"
+                f"*Commit*: @{commit_sha[:8]}@\n"
+                f"*변경*: {total_files}개 파일 (@@+{total_additions}@@ / @@-{total_deletions}@@)\n"
             )
 
             if "h3. 업데이트 이력" in existing_description:
@@ -298,17 +299,19 @@ class CommitAnalyzer:
         result = {'status': 'pending', 'action': 'create'}
 
         try:
+            push_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
             issue_data = {
                 'project_id': project_id,
                 'subject': analysis['subject'],
                 'description': (
                     f"{analysis['description']}\n\n"
-                    f"---\n\n"
-                    f"h4. GitLab Sync Info\n\n"
-                    f"* Commit: @{commit_sha[:8]}@\n"
-                    f"* Author: _{author}_\n"
-                    f"* Confidence: *{analysis.get('confidence', 'N/A')}%*\n\n"
-                    f"_Reasoning: {analysis.get('reasoning', 'N/A')}_"
+                    f"----\n\n"
+                    f"h3. 업데이트 이력\n\n"
+                    f"h4. {push_timestamp}\n\n"
+                    f"*Commit*: @{commit_sha[:8]}@\n"
+                    f"*Author*: {author}\n"
+                    f"*Confidence*: {analysis.get('confidence', 'N/A')}%"
                 ),
                 'tracker_id': analysis['tracker_id'],
                 'priority_id': analysis['priority_id'],
@@ -344,26 +347,49 @@ class CommitAnalyzer:
         result = {'status': 'pending', 'action': 'update', 'issue_id': issue_id}
 
         try:
-            note = (
-                f"h4. GitLab Update\n\n"
-                f"* Commit: @{commit_sha[:8]}@\n"
-                f"* Author: _{author}_\n"
-                f"* Message: {commit_message}\n"
-                f"* Confidence: *{analysis.get('confidence', 'N/A')}%*\n\n"
-                f"_Reasoning: {analysis.get('reasoning', 'N/A')}_"
+            existing_issue = self.redmine.get_issue(issue_id)
+            if not existing_issue:
+                result['status'] = 'failed'
+                result['error'] = f'Issue #{issue_id} not found'
+                return result
+
+            push_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+            existing_description = existing_issue.get('description', '')
+            if not existing_description:
+                existing_description = ''
+
+            update_history_marker = "\n\n----\n\nh3. 업데이트 이력\n\n"
+
+            new_update_entry = (
+                f"h4. {push_timestamp}\n\n"
+                f"{analysis.get('description', '')}\n\n"
+                f"*Commit*: @{commit_sha[:8]}@\n"
+                f"*Confidence*: {analysis.get('confidence', 'N/A')}%\n"
             )
 
+            if "h3. 업데이트 이력" in existing_description:
+                updated_description = existing_description + "\n----\n\n" + new_update_entry
+            else:
+                updated_description = existing_description + update_history_marker + new_update_entry
+
             update_data = {
+                'description': updated_description,
                 'done_ratio': analysis['done_ratio'],
                 'priority_id': analysis['priority_id']
             }
 
-            updated_issue = self.redmine.update_issue(issue_id, update_data, notes=note)
+            logger.info(
+                f"Updating issue #{issue_id}: done_ratio={analysis['done_ratio']}%, "
+                f"priority_id={analysis['priority_id']}"
+            )
+
+            updated_issue = self.redmine.update_issue(issue_id, update_data, notes=None)
 
             if updated_issue:
                 result['status'] = 'success'
                 result['updated_issue'] = updated_issue
-                logger.info(f"Successfully updated Redmine issue #{issue_id}")
+                logger.info(f"Successfully updated Redmine issue #{issue_id} with update history")
             else:
                 result['status'] = 'failed'
                 result['error'] = 'Failed to update issue'
