@@ -146,12 +146,13 @@ class CommitAnalyzer:
             result['error'] = f'Redmine project not found: {project_name}'
             return result
 
-        # 오픈되어있는 이슈를 가져옴 (new, in_progress)
+        # 최근 N일 이내 업데이트된 오픈 이슈만 가져옴 (new, in_progress)
         # LLM 부하 감소를 위해 개수 제한
         open_issues = self.redmine.get_issues(
             project_id=redmine_project['id'],
             status_id='open',
-            limit=settings.MAX_ISSUES_FOR_LLM
+            limit=settings.MAX_ISSUES_FOR_LLM,
+            updated_within_days=settings.REDMINE_ISSUE_SEARCH_DAYS
         )
 
         if open_issues is None:

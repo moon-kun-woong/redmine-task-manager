@@ -1,5 +1,6 @@
 import logging
 from typing import Dict, List, Optional, Any
+from datetime import datetime, timedelta
 import requests
 from app.config import settings
 
@@ -55,7 +56,8 @@ class RedmineClient:
         self,
         project_id: Optional[int] = None,
         status_id: Optional[str] = None,
-        limit: int = 100
+        limit: int = 100,
+        updated_within_days: Optional[int] = None
     ) -> Optional[List[Dict]]:
 
         try:
@@ -71,6 +73,13 @@ class RedmineClient:
                 params['status_id'] = 'open'
             elif status_id:
                 params['status_id'] = status_id
+
+            # 최근 N일 이내 업데이트된 이슈만 검색
+            if updated_within_days:
+                cutoff_date = datetime.now() - timedelta(days=updated_within_days)
+                date_str = cutoff_date.strftime('%Y-%m-%d')
+                params['updated_on'] = f'>={date_str}'
+                logger.info(f"Filtering issues updated on or after {date_str}")
 
             response = requests.get(url, headers=self.headers, params=params, timeout=10)
             response.raise_for_status()

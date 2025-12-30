@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     REDMINE_STATUS_IN_PROGRESS: int = 2
     REDMINE_STATUS_RESOLVED: int = 3
 
+    # Redmine issue search period (days) - only search issues updated within this period
+    REDMINE_ISSUE_SEARCH_DAYS: int = 7
+
     class Config:
         env_file = ".env"
         case_sensitive = True
