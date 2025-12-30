@@ -55,11 +55,19 @@ class Settings(BaseSettings):
     MAX_SUMMARY_LINES: int = 2000  # Summary로 처리하는 최대 라인 수
 
     # LLM optimization
-    MAX_ISSUES_FOR_LLM: int = 15  # LLM에게 전달할 최대 issue 개수
+    MAX_ISSUES_FOR_LLM: int = 15
 
-    # Redmine status IDs (일반적인 값, 실제 환경에 맞게 조정 필요)
-    REDMINE_STATUS_IN_PROGRESS: int = 2  # 진행중
-    REDMINE_STATUS_RESOLVED: int = 3  # 해결
+    # Token optimization and chunking
+    TOKEN_BUDGET_LIMIT: int = 25000
+    CHUNK_MAX_LINES: int = 1000
+    CHUNK_MAX_FILES: int = 20
+
+    # Log management
+    LOG_RETENTION_DAYS: int = 30
+
+    # Redmine status IDs
+    REDMINE_STATUS_IN_PROGRESS: int = 2
+    REDMINE_STATUS_RESOLVED: int = 3
 
     class Config:
         env_file = ".env"

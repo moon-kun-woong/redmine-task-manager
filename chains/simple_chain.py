@@ -5,6 +5,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from app.config import settings
 from app.utils import load_yaml_prompt, extract_json_from_text
+from app.utils import format_file_changes, format_redmine_issues
 
 logger = logging.getLogger(__name__)
 
@@ -19,10 +20,18 @@ class CommitAnalysisChain:
             max_retries=3,
         )
 
-        # prompts 폴더에서 YAML load
+        self.llm_mini = ChatOpenAI(
+            model="gpt-4o-mini",
+            temperature=0,
+            openai_api_key=settings.OPENAI_API_KEY,
+            max_retries=3,
+        )
+
         self.system_prompt = load_yaml_prompt("system.yaml")
         self.analysis_template = load_yaml_prompt("analysis.yaml")
         self.documentation_prompt = load_yaml_prompt("documentation.yaml")
+        self.chunk_analysis_template = load_yaml_prompt("chunk_analysis.yaml")
+        self.synthesis_template = load_yaml_prompt("synthesis.yaml")
 
     def analyze(
         self,
@@ -66,7 +75,6 @@ class CommitAnalysisChain:
         redmine_issues: list,
         gitlab_issue: Optional[Dict]
     ) -> str:
-        from app.utils import format_file_changes, format_redmine_issues
 
         template = self.analysis_template['template']
 
@@ -160,7 +168,6 @@ class CommitAnalysisChain:
             }
         """
         try:
-            from app.utils import format_file_changes
 
             system_msg = SystemMessage(content=self.documentation_prompt['content'])
 
@@ -233,3 +240,107 @@ class CommitAnalysisChain:
     ) -> Optional[Dict[str, Any]]:
 
         return self.analyze(commit_data, redmine_issues, gitlab_issue)
+
+    def analyze_chunk(
+        self,
+        chunk_data: list,
+        chunk_index: int,
+        total_chunks: int,
+        commit_data: Dict[str, Any],
+        redmine_issues: list
+    ) -> Optional[Dict[str, Any]]:
+        try:
+
+            template = self.chunk_analysis_template['template']
+
+            chunk_diff_text = format_file_changes(chunk_data, include_diff=True)
+
+            prompt = template.format(
+                repository=commit_data.get('repository', 'Unknown'),
+                branch=commit_data.get('branch', 'Unknown'),
+                author=commit_data.get('author', 'Unknown'),
+                commit_hash=commit_data.get('commit_hash', 'Unknown'),
+                commit_message=commit_data.get('commit_message', ''),
+                chunk_index=chunk_index,
+                total_chunks=total_chunks,
+                chunk_files_count=len(chunk_data),
+                chunk_changed_files=format_file_changes(chunk_data),
+                chunk_diff=chunk_diff_text,
+                redmine_issues=format_redmine_issues(redmine_issues)
+            )
+
+            user_msg = HumanMessage(content=prompt)
+
+            logger.info(f"Analyzing chunk {chunk_index}/{total_chunks}")
+            response = self.llm_mini.invoke([user_msg])
+
+            result = self._parse_chunk_response(response.content)
+
+            if result:
+                logger.info(f"Chunk {chunk_index} analysis complete")
+                return result
+            else:
+                logger.error(f"Failed to parse chunk {chunk_index} response")
+                return None
+
+        except Exception as e:
+            logger.error(f"Error analyzing chunk {chunk_index}: {e}", exc_info=True)
+            return None
+
+    def _parse_chunk_response(self, response_text: str) -> Optional[Dict[str, Any]]:
+        try:
+            result = json.loads(response_text)
+            return result
+        except json.JSONDecodeError:
+            result = extract_json_from_text(response_text)
+            if result:
+                return result
+
+            logger.error(f"Could not parse JSON from chunk response: {response_text[:200]}")
+            return None
+
+    def synthesize_results(
+        self,
+        chunk_results: list,
+        commit_data: Dict[str, Any],
+        redmine_issues: list
+    ) -> Optional[Dict[str, Any]]:
+        try:
+
+            template = self.synthesis_template['template']
+
+            chunk_results_text = ""
+            for idx, chunk_result in enumerate(chunk_results, 1):
+                chunk_results_text += f"Chunk {idx}:\n{json.dumps(chunk_result, ensure_ascii=False, indent=2)}\n\n"
+
+            prompt = template.format(
+                repository=commit_data.get('repository', 'Unknown'),
+                branch=commit_data.get('branch', 'Unknown'),
+                author=commit_data.get('author', 'Unknown'),
+                commit_hash=commit_data.get('commit_hash', 'Unknown'),
+                commit_message=commit_data.get('commit_message', ''),
+                chunk_results=chunk_results_text,
+                redmine_issues=format_redmine_issues(redmine_issues)
+            )
+
+            system_msg = SystemMessage(content=self.system_prompt['content'])
+            user_msg = HumanMessage(content=prompt)
+
+            logger.info("Synthesizing chunk analysis results")
+            response = self.llm.invoke([system_msg, user_msg])
+
+            result = self._parse_response(response.content)
+
+            if result:
+                logger.info(
+                    f"Synthesis complete: action={result.get('action')}, "
+                    f"confidence={result.get('confidence')}%"
+                )
+                return result
+            else:
+                logger.error("Failed to parse synthesis response")
+                return None
+
+        except Exception as e:
+            logger.error(f"Error synthesizing results: {e}", exc_info=True)
+            return None

@@ -2,10 +2,15 @@ import re
 import json
 import yaml
 import logging
+import tiktoken
+import glob
+from pathlib import Path
+from fnmatch import fnmatch
 from pathlib import Path
 from typing import Optional, Dict, Any
 from datetime import datetime
 from app.config import PROMPTS_DIR, LOGS_DIR
+
 
 
 # Configure logging
@@ -62,7 +67,6 @@ def parse_issue_id_from_message(message: str) -> Optional[int]:
 
 
 def should_ignore_file(file_path: str, ignored_patterns: list) -> bool:
-    from fnmatch import fnmatch
 
     for pattern in ignored_patterns:
         if fnmatch(file_path, pattern):
@@ -166,8 +170,6 @@ def format_redmine_issues(issues: list) -> str:
 
 
 def is_commit_already_processed(commit_sha: str) -> bool:
-    import glob
-    from pathlib import Path
 
     tracking_file = LOGS_DIR / "processed_commits.log"
 
@@ -206,3 +208,64 @@ def mark_commit_as_processed(commit_sha: str):
             f.write(f"{datetime.now().isoformat()}|{commit_sha}\n")
     except Exception as e:
         logger.error(f"Failed to mark commit as processed: {e}")
+
+
+def estimate_tokens(text: str) -> int:
+    try:
+        encoding = tiktoken.encoding_for_model("gpt-4o")
+        return len(encoding.encode(text))
+    except ImportError:
+        return len(text) // 3
+
+
+def chunk_diff_data(diff_data: list, max_lines: int = 1000, max_files: int = 20) -> list:
+    if not diff_data:
+        return []
+
+    chunks = []
+    current_chunk = []
+    current_lines = 0
+
+    for file_diff in diff_data:
+        diff_content = file_diff.get('diff', '')
+        lines_count = len(diff_content.split('\n')) if diff_content else 0
+
+        if current_chunk and (current_lines + lines_count > max_lines or len(current_chunk) >= max_files):
+            chunks.append(current_chunk)
+            current_chunk = []
+            current_lines = 0
+
+        current_chunk.append(file_diff)
+        current_lines += lines_count
+
+    if current_chunk:
+        chunks.append(current_chunk)
+
+    return chunks
+
+
+def cleanup_old_logs(days: int = 30):
+    from datetime import timedelta
+
+    cutoff_date = datetime.now() - timedelta(days=days)
+
+    log_files = list(LOGS_DIR.glob("app-*.log")) + list(LOGS_DIR.glob("sync-*.log"))
+
+    deleted_count = 0
+
+    for log_file in log_files:
+        try:
+            file_mtime = datetime.fromtimestamp(log_file.stat().st_mtime)
+
+            if file_mtime < cutoff_date:
+                log_file.unlink()
+                deleted_count += 1
+                logger.info(f"Deleted old log file: {log_file.name}")
+
+        except Exception as e:
+            logger.warning(f"Failed to delete log file {log_file.name}: {e}")
+
+    if deleted_count > 0:
+        logger.info(f"Cleanup complete: {deleted_count} old log files deleted")
+
+    return deleted_count

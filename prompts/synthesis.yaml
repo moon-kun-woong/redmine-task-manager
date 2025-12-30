@@ -1,0 +1,50 @@
+template: |
+  === Commit 분석 결과 종합 ===
+
+  여러 청크로 나눠서 분석한 결과를 종합합니다.
+
+  Repository: {repository}
+  Branch: {branch}
+  Author: {author}
+  Commit Hash: {commit_hash}
+  Commit Message:
+  {commit_message}
+
+  === 청크별 분석 결과 ===
+  {chunk_results}
+
+  === Open 상태 Redmine Issues ===
+  {redmine_issues}
+
+  === 분석 요청 ===
+  위 청크별 분석 결과를 종합하여:
+  1. 기존 Open 상태(신규/진행중) Redmine issue 중 관련된 것이 있는지 판단
+  2. 관련 issue가 있으면 업데이트, 없으면 새로 생성
+  3. 적절한 tracker, priority, done_ratio 결정
+  4. 간결하고 명확한 subject 작성
+  5. Description은 작업 내용을 중심으로 작성
+     - Commit message와 청크 분석 결과를 종합
+     - 코드 레벨이 아닌 기능/비즈니스 관점에서 작성
+     - 불릿 포인트 형식으로 3-5개 항목
+
+  반드시 다음 JSON 형식으로 응답하세요:
+  {
+    "action": "create|update",
+    "redmine_issue_id": null (create) 또는 issue ID (update),
+    "tracker_id": 1(결함)|2(기능)|3(개선),
+    "priority_id": 1(긴급)|2(높음)|3(보통)|4(낮음),
+    "subject": "한글 제목",
+    "description": "상세 설명 (불릿 포인트)",
+    "done_ratio": 0-100,
+    "confidence": 0-100,
+    "reasoning": "판단 근거"
+  }
+
+variables:
+  - repository
+  - branch
+  - author
+  - commit_hash
+  - commit_message
+  - chunk_results
+  - redmine_issues

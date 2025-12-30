@@ -1,0 +1,51 @@
+template: |
+  === Commit 청크 분석 ===
+
+  전체 commit의 일부분만 보고 있습니다.
+  청크: {chunk_index}/{total_chunks}
+
+  Repository: {repository}
+  Branch: {branch}
+  Author: {author}
+  Commit Hash: {commit_hash}
+  Commit Message:
+  {commit_message}
+
+  이 청크의 변경 파일 ({chunk_files_count}개):
+  {chunk_changed_files}
+
+  Diff:
+  {chunk_diff}
+
+  === Open 상태 Redmine Issues ===
+  {redmine_issues}
+
+  === 분석 요청 ===
+  이 청크에서:
+  1. 주요 변경사항을 간단히 요약
+  2. 변경의 성격 파악 (bug_fix, feature, refactor, documentation 중 하나)
+  3. 관련 있을 것 같은 Redmine issue ID 추정
+  4. Confidence level (0-100)
+
+  주의: 전체 commit의 일부분만 보고 있으므로 최종 판단은 하지 마세요.
+
+  반드시 다음 JSON 형식으로 응답하세요:
+  {
+    "main_changes": "주요 변경사항 간단 요약",
+    "change_nature": "bug_fix|feature|refactor|documentation",
+    "suggested_issue_ids": [123, 456],
+    "confidence": 70
+  }
+
+variables:
+  - repository
+  - branch
+  - author
+  - commit_hash
+  - commit_message
+  - chunk_index
+  - total_chunks
+  - chunk_files_count
+  - chunk_changed_files
+  - chunk_diff
+  - redmine_issues

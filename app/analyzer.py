@@ -1,4 +1,5 @@
 import logging
+import json
 from typing import Dict, Any, Optional
 from datetime import datetime
 from app.gitlab_client import GitLabClient
@@ -7,7 +8,10 @@ from app.utils import (
     parse_issue_id_from_message,
     log_sync_event,
     is_commit_already_processed,
-    mark_commit_as_processed
+    mark_commit_as_processed,
+    estimate_tokens,
+    chunk_diff_data,
+    format_redmine_issues
 )
 from chains.simple_chain import CommitAnalysisChain
 from app.config import settings
@@ -169,12 +173,26 @@ class CommitAnalyzer:
             'diff_data': diff_data
         }
 
-        logger.info("Calling LLM for analysis...")
-        analysis_result = self.chain.analyze(
-            commit_data,
-            open_issues,
-            gitlab_issue
-        )
+        estimated_prompt_size = len(commit_message) + len(format_redmine_issues(open_issues))
+        estimated_diff_tokens = estimate_tokens(json.dumps(diff_data.get('diffs', []), ensure_ascii=False))
+        total_estimated_tokens = estimated_prompt_size // 3 + estimated_diff_tokens + 3000
+
+        logger.info(f"Estimated tokens: {total_estimated_tokens}")
+
+        if total_estimated_tokens > settings.TOKEN_BUDGET_LIMIT:
+            logger.info(f"Token limit exceeded ({total_estimated_tokens} > {settings.TOKEN_BUDGET_LIMIT}), using chunking mode")
+            analysis_result = self._analyze_with_chunking(
+                commit_data,
+                open_issues,
+                diff_data.get('diffs', [])
+            )
+        else:
+            logger.info("Token budget within limit, using standard analysis")
+            analysis_result = self.chain.analyze(
+                commit_data,
+                open_issues,
+                gitlab_issue
+            )
 
         if not analysis_result:
             result['status'] = 'failed'
@@ -400,3 +418,52 @@ class CommitAnalyzer:
             logger.error(f"Error updating issue: {e}")
 
         return result
+
+    def _analyze_with_chunking(
+        self,
+        commit_data: Dict[str, Any],
+        open_issues: list,
+        diffs: list
+    ) -> Optional[Dict[str, Any]]:
+        try:
+            chunks = chunk_diff_data(
+                diffs,
+                max_lines=settings.CHUNK_MAX_LINES,
+                max_files=settings.CHUNK_MAX_FILES
+            )
+
+            total_chunks = len(chunks)
+            logger.info(f"Split into {total_chunks} chunks")
+
+            chunk_results = []
+
+            for idx, chunk in enumerate(chunks, 1):
+                chunk_result = self.chain.analyze_chunk(
+                    chunk_data=chunk,
+                    chunk_index=idx,
+                    total_chunks=total_chunks,
+                    commit_data=commit_data,
+                    redmine_issues=open_issues
+                )
+
+                if chunk_result:
+                    chunk_results.append(chunk_result)
+                else:
+                    logger.warning(f"Chunk {idx} analysis failed, continuing...")
+
+            if not chunk_results:
+                logger.error("All chunk analyses failed")
+                return None
+
+            logger.info("Synthesizing chunk results...")
+            final_result = self.chain.synthesize_results(
+                chunk_results=chunk_results,
+                commit_data=commit_data,
+                redmine_issues=open_issues
+            )
+
+            return final_result
+
+        except Exception as e:
+            logger.error(f"Error in chunking analysis: {e}", exc_info=True)
+            return None

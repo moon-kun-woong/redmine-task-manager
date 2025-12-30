@@ -1,9 +1,10 @@
 import logging
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Header, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
 from app.config import settings
-from app.utils import setup_logging
+from app.utils import setup_logging, cleanup_old_logs
 from app.analyzer import CommitAnalyzer
 from app.webhook import WebhookHandler, WebhookQueue
 
@@ -12,15 +13,31 @@ logger = setup_logging(settings.LOG_LEVEL)
 analyzer = None
 webhook_handler = None
 webhook_queue = WebhookQueue()
+cleanup_task = None
+
+
+async def periodic_log_cleanup():
+    while True:
+        try:
+            await asyncio.sleep(86400)
+            cleanup_old_logs(days=settings.LOG_RETENTION_DAYS)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"Error in periodic log cleanup: {e}")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global analyzer, webhook_handler
+    global analyzer, webhook_handler, cleanup_task
 
     logger.info("Starting Redmine Task Manager...")
     logger.info(f"GitLab URL: {settings.GITLAB_URL}")
     logger.info(f"Redmine URL: {settings.REDMINE_URL}")
+
+    cleanup_old_logs(days=settings.LOG_RETENTION_DAYS)
+
+    cleanup_task = asyncio.create_task(periodic_log_cleanup())
 
     analyzer = CommitAnalyzer()
     webhook_handler = WebhookHandler(analyzer)
@@ -30,6 +47,13 @@ async def lifespan(app: FastAPI):
     yield
 
     logger.info("Shutting down...")
+
+    if cleanup_task:
+        cleanup_task.cancel()
+        try:
+            await cleanup_task
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(
